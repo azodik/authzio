@@ -74,7 +74,8 @@ jobs:
         run: composer test
 
   # When VERSION is bumped on main, tag vX.Y.Z.
-  # Every main merge publishes to GHCR (GitHub Release only on version bump / first commit).
+  # Main merges publish to GHCR unless the push is changelog/docs-only (no new build).
+  # GitHub Release is created only on version bump / first commit.
   tag-release:
     name: Tag version bump
     needs: quality
@@ -84,6 +85,7 @@ jobs:
       contents: write
     outputs:
       version_bumped: ${{ steps.tag.outputs.version_bumped }}
+      should_publish: ${{ steps.tag.outputs.should_publish }}
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
     steps:
@@ -105,17 +107,28 @@ jobs:
 
           TAG="v${VERSION}"
           VERSION_BUMPED=false
+          SHOULD_PUBLISH=true
 
           if ! git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
             # Initial / orphan commit — treat as a release.
             VERSION_BUMPED=true
-          elif git diff --name-only HEAD~1 HEAD | grep -qx VERSION; then
-            VERSION_BUMPED=true
           else
-            echo "VERSION unchanged."
+            CHANGED="$(git diff --name-only HEAD~1 HEAD)"
+            if echo "$CHANGED" | grep -qx VERSION; then
+              VERSION_BUMPED=true
+            else
+              echo "VERSION unchanged."
+            fi
+
+            # Skip multi-arch GHCR publish for changelog/docs-only merges.
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -Evq '^(CHANGELOG\.md|\.github/cliff\.toml)$'; then
+              SHOULD_PUBLISH=false
+              echo "Skipping GHCR publish — changelog/docs-only change."
+            fi
           fi
 
           if [ "$VERSION_BUMPED" = "true" ]; then
+            SHOULD_PUBLISH=true
             git fetch --tags --force
 
             if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
@@ -131,6 +144,7 @@ jobs:
 
           {
             echo "version_bumped=${VERSION_BUMPED}"
+            echo "should_publish=${SHOULD_PUBLISH}"
             echo "tag=${TAG}"
             echo "version=${VERSION}"
           } >> "$GITHUB_OUTPUT"
@@ -138,6 +152,7 @@ jobs:
   release:
     name: Publish release
     needs: tag-release
+    if: needs.tag-release.outputs.should_publish == 'true'
     permissions:
       contents: write
       packages: write

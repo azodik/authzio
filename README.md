@@ -210,7 +210,7 @@ Authzio uses **SemVer + build number**. Version describes the release; build uni
 | Event | What runs |
 |-------|-----------|
 | PR | Quality (Pint, typecheck, PHPUnit) |
-| Merge to `main` | Quality → multi-arch push to GHCR (`:version`) |
+| Merge to `main` | Quality → multi-arch push to GHCR (`:version`) — skipped for changelog/docs-only merges |
 | Bump `VERSION` (+ `package.json`) on `main` | Above + git tag `vX.Y.Z` + GitHub Release `Authzio X.Y.Z` (Docker archives) + changelog PR |
 | Push tag `vX.Y.Z` | Same Publish workflow |
 
