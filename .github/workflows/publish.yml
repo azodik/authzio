@@ -273,7 +273,7 @@ jobs:
 
       - name: Open PR for CHANGELOG.md
         if: steps.version.outputs.create_release == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "docs: update CHANGELOG for ${{ steps.version.outputs.tag }}"
