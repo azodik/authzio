@@ -120,10 +120,22 @@ jobs:
               echo "VERSION unchanged."
             fi
 
-            # Skip multi-arch GHCR publish for changelog/docs-only merges.
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -Evq '^(CHANGELOG\.md|\.github/cliff\.toml)$'; then
+            # Skip multi-arch GHCR publish when nothing that ships in the image changed
+            # (changelog, CI, markdown, license, etc.).
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -Evq \
+              -e '^\.github/' \
+              -e '^CHANGELOG\.md$' \
+              -e '^README\.md$' \
+              -e '^LICENSE' \
+              -e '^CODE_OF_CONDUCT\.md$' \
+              -e '^SECURITY\.md$' \
+              -e '^CONTRIBUTING\.md$' \
+              -e '^\.gitignore$' \
+              -e '^\.editorconfig$' \
+              -e '^\.gitattributes$'
+            then
               SHOULD_PUBLISH=false
-              echo "Skipping GHCR publish — changelog/docs-only change."
+              echo "Skipping GHCR publish — no image-affecting files changed."
             fi
           fi
 
