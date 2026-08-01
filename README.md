@@ -6,7 +6,7 @@ Laravel 13 · PHP 8.5 · React console · OAuth 2.1 / OIDC
 
 **By [Azodik Consulting Private Limited](https://azodik.com)** · [github.com/azodik/authzio](https://github.com/azodik/authzio)
 
-[![CI](https://github.com/azodik/authzio/actions/workflows/ci.yml/badge.svg)](https://github.com/azodik/authzio/actions/workflows/ci.yml)
+[![CI](https://github.com/azodik/authzio/actions/workflows/main.yml/badge.svg)](https://github.com/azodik/authzio/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0B6E6E.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/azodik)
 
