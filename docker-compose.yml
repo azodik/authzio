@@ -1,0 +1,67 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: authzio:local
+    ports:
+      - "8080:80"
+    environment:
+      APP_NAME: Authzio
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8080
+      APP_FORCE_URL: "true"
+      APP_KEY: ${APP_KEY}
+      AUTHZIO_SEED: "true"
+      NIGHTWATCH_ENABLED: "false"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: authzio
+      DB_USERNAME: authzio
+      DB_PASSWORD: authzio
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      SESSION_ENCRYPT: "true"
+      SESSION_SECURE_COOKIE: "false"
+      LOG_CHANNEL: stderr
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./storage:/var/www/html/storage
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: authzio
+      POSTGRES_USER: authzio
+      POSTGRES_PASSWORD: authzio
+    ports:
+      - "5433:5432"
+    volumes:
+      # Postgres 18+ images expect the mount at /var/lib/postgresql (not .../data).
+      - authzio_pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authzio -d authzio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", ""]
+    ports:
+      - "6380:6379"
+    volumes:
+      - authzio_redis:/data
+
+volumes:
+  authzio_pg:
+  authzio_redis:
