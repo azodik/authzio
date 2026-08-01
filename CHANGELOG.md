@@ -10,8 +10,9 @@ when a SemVer tag (`vX.Y.Z`) is published. See `.github/workflows/ghcr-publish.y
 
 ## [0.0.1] — 2026-08-01
 
-### Added
+### Changed
 
-- Initial public release (OIDC / OAuth 2.1, console, Docker / GHCR, SemVer + build identity).
+- Authzio 0.0.1 by @jsharma44
 
 [0.0.1]: https://github.com/azodik/authzio/releases/tag/v0.0.1
+
