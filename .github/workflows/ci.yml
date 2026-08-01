@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Unit · integration · lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      APP_KEY: base64:2fl+KtvkdphvQyE8m4YZqKzF2F8xQxN1yR3pL0wV8aE=
+      APP_ENV: testing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, pdo_sqlite, sqlite3, pcntl, bcmath
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php -r "file_put_contents('.env', preg_replace('/^APP_KEY=.*/m', 'APP_KEY=' . getenv('APP_KEY'), file_get_contents('.env')));"
+
+      - name: VERSION matches package.json
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PKG" ]; then
+            echo "::error::VERSION ($VERSION) does not match package.json ($PKG). Bump both together."
+            exit 1
+          fi
+          echo "Version OK: $VERSION"
+
+      - name: Format (Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (Biome)
+        run: npm run lint
+
+      - name: Unit & integration tests
+        run: composer test
+
+  # When VERSION is bumped on main, tag vX.Y.Z.
+  # Every main merge publishes to GHCR (GitHub Release only on version bump / first commit).
+  tag-release:
+    name: Tag version bump
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version_bumped: ${{ steps.tag.outputs.version_bumped }}
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create tag when VERSION changed
+        id: tag
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
+            echo "::error::VERSION must be semver (got: $VERSION)"
+            exit 1
+          fi
+
+          TAG="v${VERSION}"
+          VERSION_BUMPED=false
+
+          if ! git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            # Initial / orphan commit — treat as a release.
+            VERSION_BUMPED=true
+          elif git diff --name-only HEAD~1 HEAD | grep -qx VERSION; then
+            VERSION_BUMPED=true
+          else
+            echo "VERSION unchanged."
+          fi
+
+          if [ "$VERSION_BUMPED" = "true" ]; then
+            git fetch --tags --force
+
+            if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+              echo "Tag ${TAG} already exists — skipping create."
+            else
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git tag -a "${TAG}" -m "Authzio ${TAG}"
+              git push origin "refs/tags/${TAG}"
+              echo "Created and pushed ${TAG}"
+            fi
+          fi
+
+          {
+            echo "version_bumped=${VERSION_BUMPED}"
+            echo "tag=${TAG}"
+            echo "version=${VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Publish release
+    needs: tag-release
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+      actions: read
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ needs.tag-release.outputs.tag }}
+      publish_ghcr: true
+      create_github_release: ${{ needs.tag-release.outputs.version_bumped == 'true' }}
+    secrets: inherit

@@ -1,0 +1,45 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "engines": {
+        "node": ">=24"
+    },
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "clean": "node scripts/clean.mjs",
+        "typecheck": "tsc --noEmit",
+        "lint": "biome check resources/js",
+        "format": "biome check --write resources/js",
+        "setup": "php artisan authzio:setup",
+        "setup:force": "php artisan authzio:setup --force",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:install": "playwright install chromium"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.6",
+        "@playwright/test": "^1.62.1",
+        "@tailwindcss/vite": "^4.3.3",
+        "@types/node": "^26.1.2",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.4",
+        "@vitejs/plugin-react": "^6.0.5",
+        "concurrently": "^10.0.4",
+        "laravel-vite-plugin": "^3.1",
+        "tailwindcss": "^4.3.3",
+        "typescript": "^7.0.2",
+        "vite": "^8.2.0"
+    },
+    "dependencies": {
+        "@tanstack/react-query": "^5.101.4",
+        "babel-plugin-react-compiler": "^1.0.0",
+        "lucide-react": "^1.28.0",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "react-router": "^8.3.0",
+        "sonner": "^2.0.7"
+    }
+}

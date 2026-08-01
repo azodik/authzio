@@ -1,0 +1,292 @@
+name: Publish
+
+# GitHub Release + multi-arch Docker to GHCR (ghcr.io) with SemVer + build number.
+# Triggered by: tag push v*, main publish (via CI workflow_call), or manual dispatch.
+# Workflow file name drives github.run_number (build); keep this path stable after launch.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag / SemVer with v prefix (e.g. v0.1.0)'
+        required: true
+        type: string
+      publish_ghcr:
+        description: 'Push multi-arch image to GitHub Container Registry'
+        required: false
+        type: boolean
+        default: true
+      create_github_release:
+        description: 'Create GitHub Release with Docker archives'
+        required: false
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g. v0.1.0). Leave empty to use VERSION file.'
+        required: false
+        type: string
+      publish_ghcr:
+        description: 'Push multi-arch image to GitHub Container Registry'
+        required: true
+        type: boolean
+        default: true
+      create_github_release:
+        description: 'Create GitHub Release with Docker archives'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Docker · GitHub Release · GHCR
+    runs-on: ubuntu-latest
+    env:
+      # Optional: set repo variable AUTHZIO_BUILD_OFFSET to shift the counter (default 0 → builds start at 1).
+      BUILD_OFFSET: ${{ vars.AUTHZIO_BUILD_OFFSET }}
+      # ghcr.io requires lowercase image names
+      GHCR_IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version & build
+        id: version
+        run: |
+          set -euo pipefail
+          EVENT="${{ github.event_name }}"
+          INPUT_TAG="${{ inputs.tag }}"
+
+          if [ -n "${INPUT_TAG}" ]; then
+            TAG="${INPUT_TAG}"
+            # workflow_call from CI must build the triggering commit (main HEAD),
+            # not an older commit that may already carry this SemVer tag.
+            if [ "$EVENT" != "workflow_call" ]; then
+              git fetch --tags --force
+              git checkout "refs/tags/${TAG}" 2>/dev/null || git checkout "${TAG}"
+            fi
+          elif [ "$EVENT" = "workflow_dispatch" ]; then
+            BASE="$(tr -d '[:space:]' < VERSION)"
+            TAG="v${BASE}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          BASE="${TAG#v}"
+          SHA_SHORT="$(git rev-parse --short=7 HEAD)"
+          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          PKG_VERSION="$(python3 -c "import json; print(json.load(open('package.json'))['version'])")"
+
+          if [ "$FILE_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::VERSION ($FILE_VERSION) != package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
+          if [ "$EVENT" = "workflow_call" ]; then
+            # Prefer VERSION file SemVer for the floating :X.Y.Z tag on main.
+            BASE="$FILE_VERSION"
+            TAG="v${BASE}"
+          elif [ "$FILE_VERSION" != "$BASE" ]; then
+            echo "::warning::Tag SemVer ($BASE) differs from VERSION file ($FILE_VERSION); baking tag SemVer into image."
+          fi
+
+          OFFSET="${BUILD_OFFSET:-0}"
+          if ! echo "$OFFSET" | grep -Eq '^[0-9]+$'; then
+            OFFSET=0
+          fi
+          BUILD_NUMBER="$((OFFSET + ${{ github.run_number }}))"
+
+          PUBLISH_GHCR=true
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$EVENT" = "workflow_call" ]; then
+            PUBLISH_GHCR="${{ inputs.publish_ghcr }}"
+          fi
+
+          CREATE_RELEASE=true
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$EVENT" = "workflow_call" ]; then
+            CREATE_RELEASE="${{ inputs.create_github_release }}"
+          fi
+
+          SHOULD_BUILD=true
+          if [ "$PUBLISH_GHCR" != "true" ] && [ "$CREATE_RELEASE" != "true" ]; then
+            SHOULD_BUILD=false
+            echo "::notice::Nothing to publish (GHCR and GitHub Release both disabled)."
+          fi
+
+          IMAGE="$(echo "${GHCR_IMAGE}" | tr '[:upper:]' '[:lower:]')"
+
+          {
+            echo "version=${BASE}"
+            echo "tag=${TAG}"
+            echo "sha_short=${SHA_SHORT}"
+            echo "build=${BUILD_NUMBER}"
+            echo "publish_ghcr=${PUBLISH_GHCR}"
+            echo "create_release=${CREATE_RELEASE}"
+            echo "image=${IMAGE}"
+            echo "should_build=${SHOULD_BUILD}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Resolved: tag=${TAG} build=${BUILD_NUMBER} commit=${SHA_SHORT} ghcr=${PUBLISH_GHCR} image=${IMAGE} release=${CREATE_RELEASE}"
+
+      - name: Set up QEMU
+        if: steps.version.outputs.should_build == 'true'
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        if: steps.version.outputs.should_build == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        if: steps.version.outputs.publish_ghcr == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & export linux/amd64
+        if: steps.version.outputs.create_release == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: false
+          tags: authzio:${{ steps.version.outputs.tag }}-amd64
+          build-args: |
+            AUTHZIO_VERSION=${{ steps.version.outputs.version }}
+            AUTHZIO_BUILD=${{ steps.version.outputs.build }}
+            AUTHZIO_COMMIT=${{ steps.version.outputs.sha_short }}
+          outputs: type=docker,dest=/tmp/authzio-linux-amd64.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & export linux/arm64
+        if: steps.version.outputs.create_release == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: false
+          load: false
+          tags: authzio:${{ steps.version.outputs.tag }}-arm64
+          build-args: |
+            AUTHZIO_VERSION=${{ steps.version.outputs.version }}
+            AUTHZIO_BUILD=${{ steps.version.outputs.build }}
+            AUTHZIO_COMMIT=${{ steps.version.outputs.sha_short }}
+          outputs: type=docker,dest=/tmp/authzio-linux-arm64.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Push multi-arch to GHCR
+        if: steps.version.outputs.publish_ghcr == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # Single floating SemVer tag only (e.g. :0.0.1). Build identity is baked into the image.
+          tags: |
+            ${{ steps.version.outputs.image }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.sha_short }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          build-args: |
+            AUTHZIO_VERSION=${{ steps.version.outputs.version }}
+            AUTHZIO_BUILD=${{ steps.version.outputs.build }}
+            AUTHZIO_COMMIT=${{ steps.version.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build release notes
+        id: notes
+        if: steps.version.outputs.create_release == 'true'
+        run: |
+          IMAGE="${{ steps.version.outputs.image }}"
+          {
+            echo "body<<EOF"
+            echo "## Authzio ${{ steps.version.outputs.version }}"
+            echo ""
+            echo "- Version: \`${{ steps.version.outputs.version }}\`"
+            echo "- Build: \`${{ steps.version.outputs.build }}\`"
+            echo "- Commit: \`${{ steps.version.outputs.sha_short }}\`"
+            echo "- Git tag: \`${{ steps.version.outputs.tag }}\`"
+            echo "- Docker archives: Linux multi-arch \`amd64\` + \`arm64\` (covers Linux servers, Intel/Apple Mac, and Windows via Docker Desktop / WSL2 — not Windows containers)"
+            if [ "${{ steps.version.outputs.publish_ghcr }}" = "true" ]; then
+              echo "- GHCR: \`${IMAGE}:${{ steps.version.outputs.version }}\`"
+            else
+              echo "- GHCR push: skipped"
+            fi
+            echo ""
+            echo '```bash'
+            echo "# Pull from GHCR"
+            echo "docker pull ${IMAGE}:${{ steps.version.outputs.version }}"
+            echo "# Or load a release archive"
+            echo "docker load -i authzio-linux-amd64.tar   # Intel / Windows / most Linux"
+            echo "docker load -i authzio-linux-arm64.tar   # Apple Silicon"
+            echo '```'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.create_release == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Authzio ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            /tmp/authzio-linux-amd64.tar
+            /tmp/authzio-linux-arm64.tar
+          body: ${{ steps.notes.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Regenerate CHANGELOG.md from tags/commits and open a PR (main is protected).
+      - name: Generate CHANGELOG.md
+        if: steps.version.outputs.create_release == 'true'
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: .github/cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Open PR for CHANGELOG.md
+        if: steps.version.outputs.create_release == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: update CHANGELOG for ${{ steps.version.outputs.tag }}"
+          branch: changelog/${{ steps.version.outputs.version }}
+          delete-branch: true
+          title: "docs: update CHANGELOG for ${{ steps.version.outputs.version }}"
+          body: |
+            Auto-generated [`CHANGELOG.md`](../blob/main/CHANGELOG.md) for `${{ steps.version.outputs.tag }}`.
+
+            Source: git history via [git-cliff](https://git-cliff.org) (`.github/cliff.toml`).
+            GitHub Release notes are also generated for this tag.
+          add-paths: |
+            CHANGELOG.md
+          labels: |
+            documentation
+            skip-changelog

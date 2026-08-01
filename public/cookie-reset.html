@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reset Authzio cookies</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; color: #111; }
+        button { background: #0F766E; color: #fff; border: 0; padding: 0.75rem 1.25rem; font-size: 1rem; cursor: pointer; }
+        code { background: #f4f4f5; padding: 0.1rem 0.35rem; }
+    </style>
+</head>
+<body>
+    <h1>Reset cookies</h1>
+    <p>
+        Authzio hit <strong>HTTP 431</strong> because too many session cookies accumulated
+        (usually from <code>SESSION_DRIVER=cookie</code>). Clear them here, then sign in again.
+    </p>
+    <button type="button" id="reset">Clear Authzio cookies</button>
+    <p id="status" hidden>Cleared. Redirecting…</p>
+    <script>
+        function expire(name) {
+            var base = encodeURIComponent(name) + '=; Max-Age=0; path=/; SameSite=Lax; Secure';
+            document.cookie = base;
+            var host = location.hostname;
+            document.cookie = base + '; domain=' + host;
+            document.cookie = base + '; domain=.' + host;
+        }
+        document.getElementById('reset').addEventListener('click', function () {
+            var parts = document.cookie ? document.cookie.split(';') : [];
+            for (var i = 0; i < parts.length; i++) {
+                var name = parts[i].trim().split('=')[0];
+                if (name) expire(name);
+            }
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+            } catch (e) {}
+            document.getElementById('status').hidden = false;
+            setTimeout(function () { location.href = '/console/login'; }, 600);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+# git-cliff config — used by the Release workflow to refresh CHANGELOG.md
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to Authzio are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Release notes are generated automatically from merged pull requests and commits
+when a SemVer tag (`vX.Y.Z`) is published. See `.github/workflows/publish.yml`.
+
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{{ commit.message | split(pat="\n") | first | trim }}\
+{% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}\
+{% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{% endif %}
+{% endfor %}
+{% endfor %}
+"""
+footer = """
+{% for release in releases -%}
+{% if release.version -%}
+[{% if release.version | truncate(length=1, end="") == "v" -%}
+{{ release.version | trim_start_matches(pat="v") }}
+{%- else -%}
+{{ release.version }}
+{%- endif %}]\
+: https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/releases/tag/{{ release.version }}
+{% endif -%}
+{% endfor %}
+"""
+trim = true
+render_always = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+commit_parsers = [
+  { message = "^[Ff]eat", group = "Added" },
+  { message = "^[Aa]dd", group = "Added" },
+  { message = "^[Ff]ix", group = "Fixed" },
+  { message = "^[Dd]ocs", group = "Documentation" },
+  { message = "^[Rr]efactor", group = "Changed" },
+  { message = "^[Pp]erf", group = "Changed" },
+  { message = "^[Bb]ump ", group = "Dependencies" },
+  { message = "^[Cc]hore\\(deps\\)", group = "Dependencies" },
+  { message = "^[Cc]hore", group = "Maintenance" },
+  { message = ".*", group = "Changed" },
+]
+protect_breaking_commits = false
+filter_commits = false
+topo_order = false
+sort_commits = "newest"
+
+[remote.github]
+owner = "azodik"
+repo = "authzio"
