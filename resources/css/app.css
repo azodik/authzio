@@ -1,0 +1,342 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+@source '../js/**/*.{js,ts,tsx}';
+
+@theme {
+    --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Syne', ui-sans-serif, system-ui, sans-serif;
+
+    --color-ink: #0a1210;
+    --color-ink-soft: #24312c;
+    --color-paper: #f5f6f4;
+    --color-paper-elevated: #fcfcfb;
+    --color-mist: #d5dbd6;
+    --color-fog: #e9ece8;
+    --color-teal: #0a6565;
+    --color-teal-deep: #074848;
+    --color-teal-bright: #0e8585;
+    --color-sand: #b8a88a;
+    --color-danger: #b42318;
+    --color-success: #067647;
+
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-paper text-ink font-sans antialiased;
+    }
+
+    ::selection {
+        background: color-mix(in oklab, var(--color-teal) 26%, transparent);
+    }
+
+    html.dark {
+        --color-ink: #edf2ef;
+        --color-ink-soft: #c5d0c9;
+        --color-paper: #0e1412;
+        --color-paper-elevated: #151c19;
+        --color-mist: #2a3531;
+        --color-fog: #1c2622;
+        --color-teal: #2aa8a8;
+        --color-teal-deep: #1d8585;
+        --color-teal-bright: #3bc0c0;
+        --color-sand: #a89978;
+        --color-danger: #f97066;
+        --color-success: #47cd89;
+        color-scheme: dark;
+    }
+}
+
+@layer components {
+    .mkt-shell {
+        @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+    }
+
+    .mkt-kicker {
+        @apply font-sans text-sm font-medium tracking-wide text-teal;
+    }
+
+    .mkt-title {
+        @apply font-display text-3xl font-bold tracking-tight text-ink text-balance sm:text-4xl lg:text-[2.65rem];
+    }
+
+    .mkt-lede {
+        @apply mt-4 max-w-xl text-base leading-relaxed text-ink-soft/75 sm:text-lg;
+    }
+
+    .mkt-link {
+        @apply font-medium text-teal underline-offset-4 transition-colors hover:text-teal-deep hover:underline;
+    }
+
+    .mkt-btn-primary {
+        @apply inline-flex items-center justify-center bg-teal px-5 py-3 text-sm font-semibold text-paper transition-[background-color,transform] duration-200 hover:bg-teal-bright active:translate-y-px;
+    }
+
+    .mkt-btn-secondary {
+        @apply inline-flex items-center justify-center border border-mist bg-paper-elevated px-5 py-3 text-sm font-semibold text-ink transition-[background-color,border-color,transform] duration-200 hover:border-ink/25 hover:bg-fog active:translate-y-px;
+    }
+
+    .mkt-btn-on-dark {
+        @apply inline-flex items-center justify-center border border-paper/30 bg-transparent px-5 py-3 text-sm font-semibold text-paper transition-colors hover:bg-paper/10;
+    }
+
+    .mkt-btn-dark {
+        @apply inline-flex items-center justify-center bg-ink px-5 py-3 text-sm font-semibold text-paper transition-[background-color,transform] duration-200 hover:bg-ink-soft active:translate-y-px;
+    }
+
+    .mkt-surface {
+        background-color: var(--color-paper);
+        background-image:
+            radial-gradient(ellipse 90% 55% at 12% -10%, color-mix(in oklab, var(--color-teal) 7%, transparent), transparent 55%),
+            linear-gradient(180deg, color-mix(in oklab, var(--color-fog) 55%, transparent), transparent 28%);
+    }
+
+    .mkt-hero-plane {
+        background-color: var(--color-paper);
+        background-image:
+            radial-gradient(ellipse 70% 55% at 8% 20%, color-mix(in oklab, var(--color-teal) 11%, transparent), transparent 60%),
+            radial-gradient(ellipse 50% 45% at 92% 78%, color-mix(in oklab, var(--color-sand) 12%, transparent), transparent 65%),
+            linear-gradient(165deg, var(--color-paper-elevated) 0%, var(--color-paper) 48%, var(--color-fog) 100%);
+    }
+
+    .mkt-hero-grid {
+        background-image:
+            linear-gradient(color-mix(in oklab, var(--color-mist) 55%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in oklab, var(--color-mist) 55%, transparent) 1px, transparent 1px);
+        background-size: 72px 72px;
+        mask-image: radial-gradient(ellipse 75% 70% at 50% 40%, black 20%, transparent 75%);
+    }
+
+    .mkt-social {
+        @apply inline-flex size-9 items-center justify-center text-ink-soft/55 transition-colors hover:text-ink;
+    }
+
+    .mkt-frame {
+        @apply overflow-hidden border border-mist bg-paper-elevated;
+    }
+
+    .mkt-screen {
+        @apply overflow-hidden border border-mist bg-ink/[0.03];
+        box-shadow:
+            0 0 0 1px color-mix(in oklab, var(--color-mist) 55%, transparent),
+            0 24px 48px -28px color-mix(in oklab, var(--color-ink) 18%, transparent);
+    }
+
+    .mkt-faq-icon {
+        @apply inline-flex size-7 items-center justify-center border border-mist bg-paper font-sans text-lg leading-none;
+    }
+
+    .legal-prose h2 {
+        @apply mt-8 font-display text-xl font-semibold tracking-tight text-ink first:mt-0;
+    }
+
+    .legal-prose h3 {
+        @apply mt-5 text-base font-semibold text-ink;
+    }
+
+    .legal-prose p,
+    .legal-prose li {
+        @apply mt-3 text-[0.95rem] leading-relaxed text-ink-soft/80;
+    }
+
+    .legal-prose ul {
+        @apply my-3 list-disc pl-5;
+    }
+
+    .legal-prose ol {
+        @apply my-3 list-decimal pl-5;
+    }
+
+    .legal-prose li + li {
+        @apply mt-1.5;
+    }
+
+    .legal-prose a {
+        @apply font-medium text-teal underline-offset-4 hover:text-teal-deep hover:underline;
+    }
+
+    .legal-prose strong {
+        @apply font-semibold text-ink;
+    }
+}
+
+@layer utilities {
+    .font-display {
+        font-family: var(--font-display);
+    }
+
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    .reveal {
+        animation: reveal-up 0.75s var(--ease-out-quart) both;
+    }
+
+    .reveal-delay-1 {
+        animation-delay: 0.1s;
+    }
+
+    .reveal-delay-2 {
+        animation-delay: 0.2s;
+    }
+
+    .reveal-delay-3 {
+        animation-delay: 0.32s;
+    }
+}
+
+@keyframes reveal-up {
+    from {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes mkt-rule {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+@keyframes reveal-fade {
+    from {
+        opacity: 0;
+        transform: translateY(1.25rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mkt-rule {
+    transform-origin: left center;
+    animation: mkt-rule 0.9s var(--ease-out-quart) 0.35s both;
+}
+
+.reveal-on-scroll {
+    animation: reveal-fade 0.9s var(--ease-out-quart) both;
+    animation-timeline: view();
+    animation-range: entry 8% cover 28%;
+}
+
+@supports not (animation-timeline: view()) {
+    .reveal-on-scroll {
+        animation: reveal-fade 0.85s var(--ease-out-quart) 0.05s both;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .reveal-delay-1,
+    .reveal-delay-2,
+    .reveal-delay-3,
+    .mkt-rule,
+    .reveal-on-scroll {
+        animation: none;
+    }
+}
+
+/* Email template visual editor: follow console theme, not OS prefers-color-scheme */
+.email-template-editor {
+    min-width: 0;
+}
+
+.email-template-editor [contenteditable] {
+    min-width: 0;
+}
+
+/* Keep OTP / verification code chips inside the editor (placeholders are longer than real codes). */
+.email-template-editor [contenteditable] table {
+    max-width: 100% !important;
+    table-layout: fixed;
+}
+
+.email-template-editor [contenteditable] .email-code {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    word-break: break-word !important;
+}
+
+.email-template-editor [contenteditable] .email-code span,
+.email-template-editor [contenteditable] .email-code-value {
+    display: inline-block !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: clamp(15px, 2.6vw, 28px) !important;
+    letter-spacing: 0.06em !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+}
+
+html.dark .email-template-editor [contenteditable] {
+    color: var(--color-ink);
+}
+
+html.dark .email-template-editor button,
+html.dark .email-template-editor button:disabled {
+    color: #b7c4bd;
+}
+
+html.dark .email-template-editor button:hover:not(:disabled) {
+    color: #edf2ef;
+    background: var(--color-fog);
+}
+
+html.dark .email-template-editor [contenteditable] .email-heading,
+html.dark .email-template-editor [contenteditable] .email-text,
+html.dark .email-template-editor [contenteditable] .email-brand,
+html.dark .email-template-editor [contenteditable] h1,
+html.dark .email-template-editor [contenteditable] h2,
+html.dark .email-template-editor [contenteditable] p,
+html.dark .email-template-editor [contenteditable] li,
+html.dark .email-template-editor [contenteditable] span:not(.email-muted) {
+    color: #e8eeec !important;
+}
+
+html.dark .email-template-editor [contenteditable] .email-muted {
+    color: #8b9a95 !important;
+}
+
+html.dark .email-template-editor [contenteditable] .email-code {
+    background: #1c2623 !important;
+    border-color: #2a3532 !important;
+}
+
+html.dark .email-template-editor [contenteditable] .email-code span {
+    color: #5ecfcf !important;
+}
+
+html.dark .email-template-editor [contenteditable] .email-btn,
+html.dark .email-template-editor [contenteditable] a.email-btn {
+    background: #0d8a8a !important;
+    color: #f5f6f4 !important;
+}
+
+html.dark .email-template-editor [contenteditable] a:not(.email-btn) {
+    color: #5ecfcf !important;
+}
+
+html.dark .email-template-editor [contenteditable] [style*='color:#14201E'],
+html.dark .email-template-editor [contenteditable] [style*='color: #14201E'],
+html.dark .email-template-editor [contenteditable] [style*='color:#14201e'],
+html.dark .email-template-editor [contenteditable] [style*='color: #14201e'] {
+    color: #e8eeec !important;
+}

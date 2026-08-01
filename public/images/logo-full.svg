@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none" role="img" aria-label="Authzio">
+  <g transform="translate(0,4)">
+    <path
+      fill="#0B6E6E"
+      d="M20 0.5c.35 0 .7.08 1 .22l9.4 4c.82.35 1.37 1.15 1.37 2.05v8.2c0 6.5-4.2 11.57-11.85 14.78a1.75 1.75 0 0 1-1.48 0C10.79 26.54 6.6 21.47 6.6 14.97v-8.2c0-.9.55-1.7 1.37-2.05l9.4-4c.3-.14.65-.22 1-.22Z"
+    />
+    <path
+      fill="#F4F7F6"
+      d="M20 10.6c-2.25 0-4.05 1.8-4.05 4.05 0 1.48.8 2.78 1.97 3.48v4.15c0 .68.55 1.23 1.23 1.23h1.7c.68 0 1.23-.55 1.23-1.23v-4.15c1.17-.7 1.97-2 1.97-3.48 0-2.25-1.8-4.05-4.05-4.05Zm0 2.25a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6Z"
+    />
+  </g>
+  <text
+    x="48"
+    y="33"
+    fill="#14201E"
+    font-family="Syne, 'Avenir Next', 'Segoe UI', sans-serif"
+    font-size="28"
+    font-weight="700"
+    letter-spacing="-0.04em"
+  >Authzio</text>
+</svg>

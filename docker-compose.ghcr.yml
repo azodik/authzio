@@ -1,0 +1,12 @@
+# Run the published GHCR image instead of building locally.
+#
+#   export APP_KEY=base64:$(openssl rand -base64 32)
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+#
+# Override tag: AUTHZIO_TAG=0.0.1
+services:
+  app:
+    image: ghcr.io/azodik/authzio:${AUTHZIO_TAG:-0.0.1}
+    pull_policy: always
+    build: !reset
